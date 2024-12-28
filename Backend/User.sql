@@ -12,4 +12,8 @@ BEGIN
     WHERE UserID = pUserID;
 END;//
 
+CREATE VIEW ShowUsers AS
+SELECT UserID, MailID, Name, Password, Role
+FROM Users;
+
 DELIMITER ;

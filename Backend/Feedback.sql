@@ -1,6 +1,6 @@
 DELIMITER //
 
-CREATE PROCEDURE add_feedback(
+CREATE PROCEDURE AddFeedback(
     IN p_ProductID INT,
     IN p_CustomerID INT,
     IN p_Comments VARCHAR(255),
@@ -12,7 +12,7 @@ BEGIN
     VALUES (p_ProductID, p_CustomerID, p_Comments, p_Ratings, NOW());
 END;//
 
-CREATE PROCEDURE update_feedback(
+CREATE PROCEDURE UpdateFeedback(
     IN p_FeedbackID INT,
     IN p_Comments VARCHAR(255),
     IN p_Ratings INT
@@ -26,7 +26,7 @@ BEGIN
     WHERE FeedbackID = p_FeedbackID;
 END;//
 
-CREATE PROCEDURE delete_feedback(
+CREATE PROCEDURE DeleteFeedback(
     IN p_FeedbackID INT
 )
 BEGIN
@@ -35,10 +35,9 @@ BEGIN
     WHERE FeedbackID = p_FeedbackID;
 END;//
 
-CREATE PROCEDURE ReviewFeedback()
-BEGIN
-    SELECT FeedbackID, ProductID, CustomerID, Comments, Ratings, Timestamp, Response FROM Feedback;
-END;//
+CREATE VIEW ShowFeedback AS
+SELECT FeedbackID, ProductID, CustomerID, Comments, Ratings, Timestamp, Response
+FROM Feedback;
 
 CREATE PROCEDURE RespondToFeedback(
     IN pFeedbackID INT,

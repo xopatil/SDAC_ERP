@@ -36,8 +36,8 @@ BEGIN
     DELETE FROM Products WHERE ProductID = pProductID;
 END;//
 
-CREATE VIEW View_Products AS
-SELECT ProductID, Name, Category, Cost, SellingPrice, Stock, SupplierInfo, Profitability
+CREATE VIEW ShowProducts AS
+SELECT ProductID, Name, Category, Cost, Selling_Price, Stock, Supplier_Info, Expiry_Date, Reorder_Level, Sales_Data
 FROM Products;
 
 DELIMITER ;
