@@ -1,40 +1,59 @@
 DELIMITER //
 
-CREATE PROCEDURE AddSale(IN p_ProductID INT, IN p_CustomerID INT, IN p_Quantity INT, IN p_PaymentMethod ENUM('cash', 'card', 'paypal'))
+CREATE PROCEDURE AddSale(
+    IN p_ProductID INT,
+    IN p_CustomerID INT,
+    IN p_Quantity INT,
+    IN p_PaymentMethod ENUM('cash', 'card', 'online')
+)
 BEGIN
     DECLARE v_Stock INT;
+    DECLARE v_ReorderLevel INT;
     DECLARE v_SellingPrice DECIMAL(10,2);
     DECLARE v_TotalAmount DECIMAL(10,2);
-    
-    -- Get product stock and selling price
-    SELECT Stock, Selling_Price INTO v_Stock, v_SellingPrice FROM Products WHERE ProductID = p_ProductID;
-    
-    IF v_Stock >= p_Quantity THEN
-        SET v_TotalAmount = v_SellingPrice * p_Quantity;
-        
-        -- Insert sale record
-        INSERT INTO Sales (ProductID, CustomerID, Quantity, Total_Amount, Payment_Method) 
-        VALUES (p_ProductID, p_CustomerID, p_Quantity, v_TotalAmount, p_PaymentMethod);
-        
-        -- Update product stock
-        UPDATE Products SET Stock = v_Stock - p_Quantity WHERE ProductID = p_ProductID;
+
+    -- Fetch stock, reorder level, and selling price for the product
+    SELECT Stock, Reorder_Level, Selling_Price 
+    INTO v_Stock, v_ReorderLevel, v_SellingPrice
+    FROM Products
+    WHERE ProductID = p_ProductID;
+
+    -- Check stock availability
+    IF v_Stock < p_Quantity THEN
+        -- Not enough stock to process the order
+        SELECT 'Order not processed: Insufficient stock.' AS Message;
     ELSE
-        SELECT 'Not enough stock' AS Message;
+        -- Sufficient stock, calculate total amount
+        SET v_TotalAmount = p_Quantity * v_SellingPrice;
+
+        -- Insert sale into Sales table
+        INSERT INTO Sales (ProductID, CustomerID, Quantity, Total_Amount, Payment_Method, Date)
+        VALUES (p_ProductID, p_CustomerID, p_Quantity, v_TotalAmount, p_PaymentMethod, NOW());
+        
+		-- Update product stock
+        UPDATE Products
+        SET Stock = Stock - p_Quantity
+        WHERE ProductID = p_ProductID;
+
+        -- Check if stock falls below reorder level after processing the order
+        IF (v_Stock - p_Quantity) < v_ReorderLevel THEN
+            SELECT 'Order processed, but stock is below reorder level: Restocking needed.' AS Message;
+        ELSE
+            SELECT 'Order processed successfully.' AS Message;
+        END IF;
     END IF;
-END; //
+END //
 
 CREATE VIEW ShowSales AS
 SELECT SaleID, ProductID, CustomerID, Date, Quantity, Total_Amount, Payment_Method
 FROM Sales;
 
-
-CREATE PROCEDURE UpdateSale(
+CREATE PROCEDURE EditSale(
     IN p_SaleID INT,
     IN p_NewProductID INT,
     IN p_NewCustomerID INT,
     IN p_NewQuantity INT,
-    IN p_NewPaymentMethod ENUM('cash', 'card', 'paypal'),
-    IN p_NewDate DATE
+    IN p_NewPaymentMethod ENUM('cash', 'card', 'online')
 )
 BEGIN
     DECLARE v_OriginalProductID INT;
@@ -76,7 +95,7 @@ BEGIN
             CustomerID = p_NewCustomerID,
             Quantity = p_NewQuantity,
             Payment_Method = p_NewPaymentMethod,
-            Date = p_NewDate,
+            Date = NOW(),
             Total_Amount = v_NewTotalAmount
         WHERE SaleID = p_SaleID;
         
@@ -123,28 +142,16 @@ BEGIN
     SELECT 'Sale deleted successfully' AS Message;
 END; //
 
-
-
-
-
-
-
 CREATE VIEW SalesInsights AS
 SELECT 
     P.Name AS ProductName,
     SUM(S.Quantity) AS TotalSales,
-    SUM(S.TotalAmount) AS TotalRevenue,
+    SUM(S.Total_Amount) AS TotalRevenue,
     AVG(F.Ratings) AS AverageRating
 FROM Sales S
 JOIN Products P ON S.ProductID = P.ProductID
 LEFT JOIN Feedback F ON P.ProductID = F.ProductID
 GROUP BY P.Name;
-
-
-
-
-
-
 
 DELIMITER ;
 
