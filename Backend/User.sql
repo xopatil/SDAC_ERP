@@ -7,17 +7,17 @@ CREATE PROCEDURE EditUser(
     IN new_role ENUM('Admin', 'Regular')
 )
 BEGIN
-    -- Validate email format using a basic pattern
-    IF new_mail_id NOT REGEXP '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$' THEN
-        -- If the email is invalid, return a message and do not proceed with the update
+    -- Validate email format if a new email is provided
+    IF new_mail_id IS NOT NULL AND new_mail_id NOT REGEXP '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$' THEN
+        -- Return a message if email is invalid
         SELECT 'Invalid email format. Please provide a valid email.' AS Message;
     ELSE
-        -- If the email is valid, update the user details
+        -- Update only the fields provided (non-NULL values)
         UPDATE Users
         SET 
-            MailID = new_mail_id,
-            Name = new_name,
-            Role = new_role
+            MailID = CASE WHEN new_mail_id IS NOT NULL THEN new_mail_id ELSE MailID END,
+            Name = CASE WHEN new_name IS NOT NULL THEN new_name ELSE Name END,
+            Role = CASE WHEN new_role IS NOT NULL THEN new_role ELSE Role END
         WHERE UserID = user_id;
 
         -- Return a success message
@@ -25,44 +25,17 @@ BEGIN
     END IF;
 END; //
 
-DELIMITER ;
-
-
 CREATE PROCEDURE DeleteUserAndCustomer(IN user_mail VARCHAR(255))
 BEGIN
-    DECLARE customer_exists INT;
-
-    -- Check if the customer exists for the given user email
-    SELECT COUNT(*) INTO customer_exists
-    FROM Customers
-    WHERE Email = user_mail;
-
-    -- If a customer exists, delete the customer
-    IF customer_exists > 0 THEN
-        DELETE FROM Customers WHERE Email = user_mail;
-    END IF;
+    -- Delete the customer if associated with the given user email
+    DELETE FROM Customers WHERE Email = user_mail;
 
     -- Delete the user
     DELETE FROM Users WHERE MailID = user_mail;
 
     -- Display the single-line deletion message
     SELECT 'User and associated customer (if any) have been deleted.' AS DeletionMessage;
-END //
-
-CREATE PROCEDURE EditUserDetails(
-    IN pUserID INT,
-    IN pName VARCHAR(255),
-    IN pMailID VARCHAR(255),
-    IN pRole ENUM('Admin', 'Regular')
-)
-BEGIN
-    UPDATE Users
-    SET Name = pName, MailID = pMailID, Role = pRole
-    WHERE UserID = pUserID;
-END;//
-
-CREATE VIEW ShowUsers AS
-SELECT UserID, MailID, Name, Password, Role
-FROM Users;
+END; //
 
 DELIMITER ;
+

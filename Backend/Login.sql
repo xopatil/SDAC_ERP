@@ -1,26 +1,23 @@
 DELIMITER //
 
-CREATE FUNCTION LoginUser(
-    pMailID VARCHAR(255),
-    pPassword VARCHAR(255)
-) RETURNS VARCHAR(255)
-DETERMINISTIC
+CREATE PROCEDURE LoginUser(
+    IN pMailID VARCHAR(255),
+    IN pPassword VARCHAR(255)
+)
 BEGIN
-    DECLARE resultMessage VARCHAR(255);
     DECLARE userRole ENUM('Admin', 'Regular');
-    
-    -- Validate user credentials
+
+    -- Validate user credentials and get the user's role
     SELECT Role INTO userRole 
     FROM Users 
     WHERE MailID = pMailID AND Password = SHA2(pPassword, 256);
-    
+
+    -- Provide appropriate feedback directly
     IF userRole IS NOT NULL THEN
-        SET resultMessage = CONCAT('Login successful. Role: ', userRole);
+        SELECT CONCAT('Login successful. Role: ', userRole) AS Message;
     ELSE
-        SET resultMessage = 'Invalid email or password.';
+        SELECT 'Invalid email or password.' AS Message;
     END IF;
-    
-    RETURN resultMessage;
 END;
 
 //

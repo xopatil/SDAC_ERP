@@ -20,11 +20,20 @@ INSERT INTO Customers (Name, Email, Phone, Address, Loyalty_Points) VALUES
 ('Customer Five', 'customer5@example.com', '6789012345', 'Address 5', 250);
 
 INSERT INTO Sales (ProductID, CustomerID, Date, Quantity, Total_Amount, Payment_Method) VALUES
-(1, 1, '2024-12-25', 10, 150.00, 'Card'),
-(2, 2, '2024-12-26', 5, 125.00, 'Online'),
-(3, 3, '2024-12-27', 15, 600.00, 'Cash'),
-(4, 4, '2024-12-28', 20, 160.00, 'Card'),
-(5, 5, '2024-12-29', 12, 216.00, 'Online');
+(7, 1, '2024-1-25 17:09:12', 10, 120.00, 'Card'),
+(2, 3, '2024-2-26', 5, 105.00, 'Online'),
+(3, 10, '2024-3-27', 15, 300.00, 'Cash'),
+(3, 3, '2024-4-27', 15, 800.00, 'Cash'),
+(4, 1, '2024-5-28', 20, 180.00, 'Card'),
+(4, 10, '2024-6-28', 20, 200.00, 'Card'),
+(6, 3, '2024-7-29', 12, 206.00, 'Online'),
+(7, 1, '2024-2-25 17:09:12', 10, 150.00, 'Card'),
+(2, 3, '2024-3-26', 5, 125.00, 'Online'),
+(3, 10, '2024-4-27', 15, 600.00, 'Cash'),
+(3, 3, '2024-5-27', 15, 600.00, 'Cash'),
+(4, 1, '2024-6-28', 20, 160.00, 'Card'),
+(4, 10, '2024-7-28', 20, 160.00, 'Card'),
+(6, 3, '2024-10-29', 12, 216.00, 'Online');
 
 INSERT INTO Feedback (ProductID, CustomerID, Comments, Ratings) VALUES
 (1, 1, 'Great quality product!', 5),

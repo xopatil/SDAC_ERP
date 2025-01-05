@@ -1,6 +1,6 @@
 DELIMITER //
 
-CREATE FUNCTION ForecastDemand(days INT) 
+CREATE FUNCTION Demand_Forecasting(days INT) 
 RETURNS JSON
 DETERMINISTIC
 BEGIN
@@ -46,6 +46,9 @@ BEGIN
 
     CLOSE product_cursor;
 
+	INSERT INTO Logs (Algorithm_Name, Timestamp, Results)
+    VALUES ('Demand Forecasting', NOW(), result);
+    
     RETURN result;
 END;
 //

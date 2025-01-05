@@ -14,17 +14,14 @@ BEGIN
     INSERT INTO FEEDBACK (ProductID, CustomerID, Comments, Ratings, Timestamp)
     VALUES (p_ProductID, p_CustomerID, p_Comments, p_Ratings, NOW());
 
-    -- Get the number of rows affected
-    SET feedback_id = LAST_INSERT_ID();
-
-    IF feedback_id > 0 THEN
+    IF LAST_INSERT_ID() > 0 THEN
         SELECT 'Feedback added successfully!' AS Message;
     ELSE
         SELECT 'Error: Unable to add feedback!' AS Message;
     END IF;
 END;//
+DELIMITER //
 
--- Update Feedback Procedure
 CREATE PROCEDURE EditFeedback(
     IN p_FeedbackID INT,
     IN p_Comments VARCHAR(255),
@@ -33,24 +30,21 @@ CREATE PROCEDURE EditFeedback(
 BEGIN
     DECLARE rows_affected INT;
 
-    -- Update the feedback record in the FEEDBACK table
+    -- Update the feedback record in the FEEDBACK table only if the value is provided
     UPDATE FEEDBACK
-    SET Comments = p_Comments,
-        Ratings = p_Ratings,
-        Timestamp = NOW()  -- Update the timestamp to current time
+    SET 
+        Comments = IFNULL(p_Comments, Comments),  -- Only update if new comment is provided
+        Ratings = IFNULL(p_Ratings, Ratings),  -- Only update if new rating is provided
+        Timestamp = NOW()  -- Always update the timestamp to current time
     WHERE FeedbackID = p_FeedbackID;
 
-    -- Get the number of rows affected
-    SET rows_affected = ROW_COUNT();
-
-    IF rows_affected > 0 THEN
+    IF ROW_COUNT() > 0 THEN
         SELECT 'Feedback updated successfully!' AS Message;
     ELSE
         SELECT 'Error: No feedback found with the given ID or no changes made!' AS Message;
     END IF;
-END;//
+END; //
 
--- Delete Feedback Procedure
 CREATE PROCEDURE DeleteFeedback(
     IN p_FeedbackID INT
 )
@@ -61,16 +55,13 @@ BEGIN
     DELETE FROM FEEDBACK
     WHERE FeedbackID = p_FeedbackID;
 
-    -- Get the number of rows affected
-    SET rows_affected = ROW_COUNT();
-
-    IF rows_affected > 0 THEN
+    IF ROW_COUNT() > 0 THEN
         SELECT 'Feedback deleted successfully!' AS Message;
     ELSE
         SELECT 'Error: No feedback found with the given ID!' AS Message;
     END IF;
-END;//
-
+END; //
+DELIMITER //
 -- Respond to Feedback Procedure
 CREATE PROCEDURE RespondToFeedback(
     IN pFeedbackID INT,
@@ -84,10 +75,7 @@ BEGIN
     SET Response = pResponse
     WHERE FeedbackID = pFeedbackID;
 
-    -- Get the number of rows affected
-    SET rows_affected = ROW_COUNT();
-
-    IF rows_affected > 0 THEN
+    IF ROW_COUNT() > 0 THEN
         SELECT 'Response added successfully!' AS Message;
     ELSE
         SELECT 'Error: No feedback found with the given ID!' AS Message;

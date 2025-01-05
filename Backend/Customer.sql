@@ -8,71 +8,103 @@ CREATE PROCEDURE EditCustomer(
     IN new_email VARCHAR(255)
 )
 BEGIN
+    -- Validate email format
+    IF new_email IS NOT NULL AND new_email NOT REGEXP '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$' THEN
+        SELECT 'Invalid email format.' AS Message;
 
-	IF new_email NOT REGEXP '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$' THEN
-		SELECT 'Invalid email format.' AS Message;
     -- Validate phone number format (only digits and 10-15 characters)
-    ELSEIF new_phone NOT REGEXP '^[0-9]{10,15}$' THEN
-        SELECT 'Invalid phone number. Must contain only 10 digits.' AS Message;
-	ELSE
-		UPDATE Customers
-		SET 
-			Name = new_name,
-			Phone = new_phone,
-			Address = new_address,
-			Email = new_email
-		WHERE CustomerID = customer_id;
-		
-		SELECT 'Customer details updated successfully.' AS Message;
-	END IF;
-END; //
+    ELSEIF new_phone IS NOT NULL AND new_phone NOT REGEXP '^[0-9]{10,15}$' THEN
+        SELECT 'Invalid phone number. Must contain only 10-15 digits.' AS Message;
 
+    ELSE
+        -- Update only the fields that are not NULL
+        UPDATE Customers
+        SET 
+            Name = CASE WHEN new_name IS NOT NULL THEN new_name ELSE Name END,
+            Phone = CASE WHEN new_phone IS NOT NULL THEN new_phone ELSE Phone END,
+            Address = CASE WHEN new_address IS NOT NULL THEN new_address ELSE Address END,
+            Email = CASE WHEN new_email IS NOT NULL THEN new_email ELSE Email END
+        WHERE CustomerID = customer_id;
+
+        SELECT 'Customer details updated successfully.' AS Message;
+    END IF;
+END; //
 
 CREATE PROCEDURE DeactivateInactiveCustomers()
 BEGIN
-    -- Declare all variables at the start
+    -- Declare variables
     DECLARE currentDate DATE;
-    DECLARE last_purchase_date DATE;
-    DECLARE done INT DEFAULT 0;
-    DECLARE customer_id INT;
-    DECLARE purchase_history TEXT;
-    DECLARE customer_cursor CURSOR FOR
-        SELECT CustomerID, Purchase_History FROM Customers;
+    DECLARE lastPurchaseDate DATETIME;
+    DECLARE v_done INT DEFAULT FALSE;
+    DECLARE v_id INT;
+    DECLARE v_user_mail VARCHAR(255);
+    DECLARE v_history TEXT;
+    DECLARE deactivatedCount INT DEFAULT 0;
 
-    -- Declare handler for when the cursor reaches the end of the result set
-    DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = 1;
+    -- Cursor declaration 
+    DECLARE curs CURSOR FOR 
+        SELECT CustomerID, Email, Purchase_History 
+        FROM Customers 
+        ORDER BY CustomerID;
+
+    -- Handler declaration
+    DECLARE CONTINUE HANDLER FOR NOT FOUND SET v_done = TRUE;
 
     -- Set the current date
     SET currentDate = CURDATE();
+	
+    -- Open cursor
+    OPEN curs;
 
-    -- Open the cursor
-    OPEN customer_cursor;
-
-    -- Loop through the cursor and process each customer
     read_loop: LOOP
-        FETCH customer_cursor INTO customer_id, purchase_history;
-
-        IF done THEN
+        -- Fetch the data
+        FETCH curs INTO v_id, v_user_mail, v_history;
+        
+        -- Exit if done
+        IF v_done THEN
             LEAVE read_loop;
         END IF;
-
-        -- Extract the date of the most recent purchase
-        SET last_purchase_date = STR_TO_DATE(
-            REGEXP_SUBSTR(purchase_history, 'Date: ([0-9-]+)'),  -- Corrected the REGEXP_SUBSTR usage
-            '%Y-%m-%d'
+		
+        -- Extract the latest purchase date
+        SET lastPurchaseDate = (
+            SELECT MAX(
+                STR_TO_DATE(
+                    TRIM(
+                        SUBSTRING_INDEX(
+                            SUBSTRING_INDEX(v_history, 'Date: ', -1), 
+                            ', ', 1
+                        )
+                    ),
+                    '%Y-%m-%d %H:%i:%s'
+                )
+            )
+            FROM (
+                SELECT 1 AS seq UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 
+                UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8
+            ) AS seq
+            WHERE INSTR(v_history, 'Date:') > 0
         );
 
-        -- Check if the last purchase date is older than 1 year (365 days)
-        IF last_purchase_date IS NOT NULL AND DATEDIFF(currentDate, last_purchase_date) > 365 THEN
-            DELETE FROM Customers WHERE CustomerID = customer_id;
+--         SELECT 
+--             v_id AS ProcessingCustomerID,
+--             lastPurchaseDate AS ExtractedDate,
+--             DATEDIFF(currentDate, lastPurchaseDate) AS DaysDifference;
+
+        -- Check if the last purchase date is more than 1 day ago
+        IF lastPurchaseDate IS NOT NULL AND DATEDIFF(currentDate, lastPurchaseDate) > 1 THEN
+            -- Deactivate the customer (delete)
+            CALL DeleteUserAndCustomer(v_user_mail);
+            
+            SET deactivatedCount = deactivatedCount + 1;
         END IF;
+
     END LOOP;
 
-    -- Close the cursor
-    CLOSE customer_cursor;
+    -- Close cursor
+    CLOSE curs;
 
-    -- Return the number of rows affected
-    SELECT ROW_COUNT() AS 'Number of customers deactivated';
+    -- Return the number of deactivated customers
+    SELECT deactivatedCount AS 'Number of customers deactivated';
 END //
 
 CREATE VIEW ShowCustomers AS

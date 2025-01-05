@@ -5,7 +5,7 @@ CREATE TABLE Users (
     MailID VARCHAR(255) NOT NULL UNIQUE,
     Name VARCHAR(255) NOT NULL,
     Password VARCHAR(255) NOT NULL,
-    Role ENUM('Admin', 'Customer') NOT NULL
+    Role ENUM('Admin', 'Regular') NOT NULL
 );
 
 CREATE TABLE Products (
