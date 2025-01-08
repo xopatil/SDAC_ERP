@@ -1,31 +1,56 @@
 DELIMITER //
-
-CREATE FUNCTION Product_Profitability(
-    pProductID INT
-) RETURNS DECIMAL(10, 2)
+CREATE FUNCTION Product_Profitability() RETURNS JSON
 DETERMINISTIC
 BEGIN
-    DECLARE sellingPrice DECIMAL(10, 2);
-    DECLARE costPrice DECIMAL(10, 2);
-    DECLARE totalQuantitySold INT;
-    DECLARE totalProfit DECIMAL(10, 2);
+    DECLARE result JSON DEFAULT JSON_OBJECT('Timestamp', NOW());
 
-    -- Retrieve the selling price, cost price, and total quantity sold for the product
-    SELECT MAX(Selling_Price), MAX(Cost), 
-           COALESCE(SUM(Quantity), 0)
-    INTO sellingPrice, costPrice, totalQuantitySold
-    FROM Products
-    LEFT JOIN Sales ON Products.ProductID = Sales.ProductID
-    WHERE Products.ProductID = pProductID;
+    -- Calculate and aggregate product profitability into a JSON array
+    SET result = (
+        SELECT JSON_OBJECT(
+            'Timestamp', NOW(),
+            'ProfitabilityData', JSON_ARRAYAGG(profitability_data)
+        )
+        FROM (
+            SELECT 
+                JSON_OBJECT(
+                    'ProductID', p.ProductID,
+                    'TotalProfit', COALESCE(SUM((s.Total_Amount / s.Quantity - p.Cost) * s.Quantity), 0)
+                ) AS profitability_data
+            FROM Products p
+            LEFT JOIN Sales s ON p.ProductID = s.ProductID
+            GROUP BY p.ProductID
+        ) AS aggregated_data
+    );
 
-    -- Calculate the total profit for the product
-    SET totalProfit = (sellingPrice - costPrice) * totalQuantitySold;
-    
-    INSERT INTO Logs (Algorithm_Name, Timestamp, Results)
-    VALUES ('Product Profitability', NOW(), totalProfit);
-
-    RETURN totalProfit;
+    RETURN result;
 END;
-
 //
 DELIMITER ;
+
+CREATE VIEW HistoricalSellingPrices AS
+SELECT 
+    s.SaleID,
+    s.ProductID,
+    s.Quantity,
+    s.Date AS SaleDate,
+    s.Total_Amount / s.Quantity AS Selling_Price_At_Sale,
+    p.Cost
+FROM 
+    Sales s
+JOIN 
+    Products p ON s.ProductID = p.ProductID;
+
+
+CREATE VIEW ProductProfitabilityView AS
+SELECT 
+    h.ProductID,
+    SUM((h.Selling_Price_At_Sale - h.Cost) * h.Quantity) AS TotalProfit
+FROM 
+    HistoricalSellingPrices h
+GROUP BY 
+    h.ProductID;
+    
+    
+    
+
+

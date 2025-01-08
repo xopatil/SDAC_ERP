@@ -8,8 +8,6 @@ CREATE PROCEDURE AddFeedback(
     IN p_Ratings INT
 )
 BEGIN
-    DECLARE feedback_id INT;
-
     -- Insert new feedback into the FEEDBACK table
     INSERT INTO FEEDBACK (ProductID, CustomerID, Comments, Ratings, Timestamp)
     VALUES (p_ProductID, p_CustomerID, p_Comments, p_Ratings, NOW());
@@ -20,7 +18,6 @@ BEGIN
         SELECT 'Error: Unable to add feedback!' AS Message;
     END IF;
 END;//
-DELIMITER //
 
 CREATE PROCEDURE EditFeedback(
     IN p_FeedbackID INT,
@@ -28,8 +25,6 @@ CREATE PROCEDURE EditFeedback(
     IN p_Ratings INT
 )
 BEGIN
-    DECLARE rows_affected INT;
-
     -- Update the feedback record in the FEEDBACK table only if the value is provided
     UPDATE FEEDBACK
     SET 
@@ -49,8 +44,6 @@ CREATE PROCEDURE DeleteFeedback(
     IN p_FeedbackID INT
 )
 BEGIN
-    DECLARE rows_affected INT;
-
     -- Delete the feedback record from the FEEDBACK table
     DELETE FROM FEEDBACK
     WHERE FeedbackID = p_FeedbackID;
@@ -61,15 +54,13 @@ BEGIN
         SELECT 'Error: No feedback found with the given ID!' AS Message;
     END IF;
 END; //
-DELIMITER //
+
 -- Respond to Feedback Procedure
 CREATE PROCEDURE RespondToFeedback(
     IN pFeedbackID INT,
     IN pResponse TEXT
 )
 BEGIN
-    DECLARE rows_affected INT;
-
     -- Update the response for the feedback record
     UPDATE Feedback
     SET Response = pResponse

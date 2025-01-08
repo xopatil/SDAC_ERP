@@ -1,5 +1,4 @@
-
-DELIMITER $$
+DELIMITER //
 
 CREATE FUNCTION ABC_Classification()
 RETURNS JSON -- Return results in JSON format
@@ -12,7 +11,7 @@ BEGIN
     DECLARE finished INT DEFAULT 0;
     DECLARE product_id INT;
     DECLARE product_sales DECIMAL(10,2);
-    DECLARE result JSON DEFAULT JSON_ARRAY();
+    DECLARE result JSON DEFAULT JSON_OBJECT('Timestamp', NOW());
     
     -- Cursor for product sales
     DECLARE sales_cursor CURSOR FOR
@@ -56,12 +55,9 @@ BEGIN
 
     -- Close the cursor
     CLOSE sales_cursor;
-    
-	INSERT INTO Logs (Algorithm_Name, Timestamp, Results)
-	VALUES ('ABC Classification', NOW(), result);
 
     -- Return the JSON result
     RETURN result;
-END$$
+END //
 
 DELIMITER ;

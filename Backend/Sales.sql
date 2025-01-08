@@ -1,3 +1,4 @@
+    
 DELIMITER //
 
 CREATE PROCEDURE AddSale(
@@ -29,11 +30,6 @@ BEGIN
         -- Insert sale into Sales table
         INSERT INTO Sales (ProductID, CustomerID, Quantity, Total_Amount, Payment_Method, Date)
         VALUES (p_ProductID, p_CustomerID, p_Quantity, v_TotalAmount, p_PaymentMethod, NOW());
-        
-		-- Update product stock
-        UPDATE Products
-        SET Stock = Stock - p_Quantity
-        WHERE ProductID = p_ProductID;
 
         -- Check if stock falls below reorder level after processing the order
         IF (v_Stock - p_Quantity) < v_ReorderLevel THEN
@@ -44,103 +40,77 @@ BEGIN
     END IF;
 END //
 
-CREATE VIEW ShowSales AS
-SELECT SaleID, ProductID, CustomerID, Date, Quantity, Total_Amount, Payment_Method
-FROM Sales;
+-- CREATE PROCEDURE EditSale(
+--     IN p_SaleID INT,
+--     IN p_NewProductID INT,
+--     IN p_NewCustomerID INT,
+--     IN p_NewQuantity INT,
+--     IN p_NewPaymentMethod ENUM('cash', 'card', 'online')
+-- )
+-- BEGIN
+--     DECLARE v_OriginalProductID INT;
+--     DECLARE v_OriginalQuantity INT;
 
-CREATE PROCEDURE EditSale(
-    IN p_SaleID INT,
-    IN p_NewProductID INT,
-    IN p_NewCustomerID INT,
-    IN p_NewQuantity INT,
-    IN p_NewPaymentMethod ENUM('cash', 'card', 'online')
-)
-BEGIN
-    DECLARE v_OriginalProductID INT;
-    DECLARE v_OriginalCustomerID INT;
-    DECLARE v_OriginalQuantity INT;
-    DECLARE v_OriginalStock INT;
-    DECLARE v_OriginalSellingPrice DECIMAL(10, 2);
-    DECLARE v_OriginalTotalAmount DECIMAL(10, 2);
-    DECLARE v_NewStock INT;
-    DECLARE v_NewSellingPrice DECIMAL(10, 2);
-    DECLARE v_NewTotalAmount DECIMAL(10, 2);
-    
-    -- Get original product ID, customer ID, quantity, and stock information for the sale
-    SELECT ProductID, CustomerID, Quantity INTO v_OriginalProductID, v_OriginalCustomerID, v_OriginalQuantity
-    FROM Sales
-    WHERE SaleID = p_SaleID;
-    
-    -- Get product stock and selling price for the original product
-    SELECT Stock, Selling_Price INTO v_OriginalStock, v_OriginalSellingPrice
-    FROM Products
-    WHERE ProductID = v_OriginalProductID;
-    
-    -- Calculate the original total amount
-    SET v_OriginalTotalAmount = v_OriginalSellingPrice * v_OriginalQuantity;
-    
-    -- Get new product stock and selling price
-    SELECT Stock, Selling_Price INTO v_NewStock, v_NewSellingPrice
-    FROM Products
-    WHERE ProductID = p_NewProductID;
-    
-    -- Calculate the new total amount
-    SET v_NewTotalAmount = v_NewSellingPrice * p_NewQuantity;
-    
-    -- Check if there is enough stock for the new quantity
-    IF v_NewStock >= p_NewQuantity THEN
-        -- Update the sale record
-        UPDATE Sales
-        SET ProductID = p_NewProductID,
-            CustomerID = p_NewCustomerID,
-            Quantity = p_NewQuantity,
-            Payment_Method = p_NewPaymentMethod,
-            Date = NOW(),
-            Total_Amount = v_NewTotalAmount
-        WHERE SaleID = p_SaleID;
-        
-        -- Update the original product stock
-        UPDATE Products
-        SET Stock = v_OriginalStock + v_OriginalQuantity
-        WHERE ProductID = v_OriginalProductID;
+--     -- Get original product ID and quantity for the sale
+--     SELECT ProductID, Quantity INTO v_OriginalProductID, v_OriginalQuantity
+--     FROM Sales
+--     WHERE SaleID = p_SaleID;
 
-        -- Update the new product stock
-        UPDATE Products
-        SET Stock = v_NewStock - p_NewQuantity
-        WHERE ProductID = p_NewProductID;
+--     -- Restore stock for the original product
+--     UPDATE Products
+--     SET Stock = Stock + v_OriginalQuantity
+--     WHERE ProductID = v_OriginalProductID;
 
-        SELECT 'Sale updated successfully' AS Message;
-    ELSE
-        SELECT 'Not enough stock for the new quantity' AS Message;
-    END IF;
-END; //
+--     -- Check stock availability for the new product
+--     IF EXISTS (
+--         SELECT 1
+--         FROM Products
+--         WHERE ProductID = p_NewProductID AND Stock >= p_NewQuantity
+--     ) THEN
+--         -- Update the sale record
+--         UPDATE Sales
+--         SET ProductID = p_NewProductID,
+--             CustomerID = p_NewCustomerID,
+--             Quantity = p_NewQuantity,
+--             Payment_Method = p_NewPaymentMethod,
+--             Date = NOW(),
+--             Total_Amount = p_NewQuantity * (SELECT Selling_Price FROM Products WHERE ProductID = p_NewProductID)
+--         WHERE SaleID = p_SaleID;
+
+--         -- Deduct stock for the new product
+--         UPDATE Products
+--         SET Stock = Stock - p_NewQuantity
+--         WHERE ProductID = p_NewProductID;
+
+--         SELECT 'Sale updated successfully' AS Message;
+--     ELSE
+--         -- Revert stock restoration if new product stock is insufficient
+--         UPDATE Products
+--         SET Stock = Stock - v_OriginalQuantity
+--         WHERE ProductID = v_OriginalProductID;
+
+--         SELECT 'Not enough stock for the new quantity' AS Message;
+--     END IF;
+-- END; //
 
 CREATE PROCEDURE DeleteSale(IN p_SaleID INT)
 BEGIN
-    DECLARE v_ProductID INT;
-    DECLARE v_Quantity INT;
-    DECLARE v_Stock INT;
+    -- Restore stock and delete sale in a single transaction
+    UPDATE Products P
+    JOIN Sales S ON P.ProductID = S.ProductID
+    SET P.Stock = P.Stock + S.Quantity
+    WHERE S.SaleID = p_SaleID;
 
-    -- Get the sale's product ID and quantity
-    SELECT ProductID, Quantity INTO v_ProductID, v_Quantity
-    FROM Sales
-    WHERE SaleID = p_SaleID;
-    
-    -- Get product stock
-    SELECT Stock INTO v_Stock
-    FROM Products
-    WHERE ProductID = v_ProductID;
-    
     -- Delete the sale record
-    DELETE FROM Sales WHERE SaleID = p_SaleID;
-    
-    -- Update the product stock
-    UPDATE Products
-    SET Stock = v_Stock + v_Quantity
-    WHERE ProductID = v_ProductID;
+    DELETE FROM Sales
+    WHERE SaleID = p_SaleID;
 
     SELECT 'Sale deleted successfully' AS Message;
 END; //
+
+CREATE VIEW ShowSales AS
+SELECT SaleID, ProductID, CustomerID, Date, Quantity, Total_Amount, Payment_Method
+FROM Sales;
 
 CREATE VIEW SalesInsights AS
 SELECT 

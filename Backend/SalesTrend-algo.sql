@@ -1,4 +1,4 @@
-DELIMITER $$
+DELIMITER //
 
 CREATE FUNCTION Sales_Trend_Analysis() RETURNS JSON DETERMINISTIC
 BEGIN
@@ -6,7 +6,7 @@ BEGIN
     DECLARE sales_date DATE;
     DECLARE monthly_sales DECIMAL(10,2);
     DECLARE prev_month_sales DECIMAL(10,2) DEFAULT NULL;
-    DECLARE result JSON DEFAULT JSON_ARRAY();
+    DECLARE result JSON DEFAULT JSON_OBJECT('Timestamp', NOW());
     DECLARE finished_products INT DEFAULT 0;
     DECLARE finished_sales INT DEFAULT 0;
 
@@ -83,10 +83,9 @@ BEGIN
     -- Close product cursor
     CLOSE product_cursor;
 
-	INSERT INTO Logs (Algorithm_Name, Timestamp, Results)
-    VALUES ('Sales Trend Analysis', NOW(), result);
+
     -- Return the result as JSON
     RETURN result;
-END$$
+END; //
 
 DELIMITER ;

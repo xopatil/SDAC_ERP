@@ -8,7 +8,7 @@ BEGIN
     DECLARE product_name VARCHAR(100);
     DECLARE avg_sales DECIMAL(10, 2);
     DECLARE total_sales INT;
-    DECLARE result JSON DEFAULT JSON_ARRAY();
+    DECLARE result JSON DEFAULT JSON_OBJECT('Timestamp', NOW());
     DECLARE done INT DEFAULT 0;
 
     -- Cursor declaration
@@ -45,12 +45,8 @@ BEGIN
     END LOOP;
 
     CLOSE product_cursor;
-
-	INSERT INTO Logs (Algorithm_Name, Timestamp, Results)
-    VALUES ('Demand Forecasting', NOW(), result);
     
     RETURN result;
-END;
-//
+END; //
 
 DELIMITER ;

@@ -28,11 +28,7 @@ CREATE PROCEDURE EditProduct(
     IN pCategory VARCHAR(255),
     IN pCost DECIMAL(10, 2),
     IN pSellingPrice DECIMAL(10, 2),
-    IN pStock INT,
-    IN pReorderLevel INT,
-    IN pSupplierInfo VARCHAR(255),
-    IN pExpiryDate DATE,
-    IN pSalesData TEXT
+    IN pReorderLevel INT
 )
 BEGIN
     -- Update the product details, only updating non-NULL values
@@ -42,11 +38,7 @@ BEGIN
         Category = CASE WHEN pCategory IS NOT NULL THEN pCategory ELSE Category END,
         Cost = CASE WHEN pCost IS NOT NULL THEN pCost ELSE Cost END,
         Selling_Price = CASE WHEN pSellingPrice IS NOT NULL THEN pSellingPrice ELSE Selling_Price END,
-        Stock = CASE WHEN pStock IS NOT NULL THEN pStock ELSE Stock END,
-        Reorder_Level = CASE WHEN pReorderLevel IS NOT NULL THEN pReorderLevel ELSE Reorder_Level END,
-        Supplier_Info = CASE WHEN pSupplierInfo IS NOT NULL THEN pSupplierInfo ELSE Supplier_Info END,
-        Expiry_Date = CASE WHEN pExpiryDate IS NOT NULL THEN pExpiryDate ELSE Expiry_Date END,
-        Sales_Data = CASE WHEN pSalesData IS NOT NULL THEN pSalesData ELSE Sales_Data END
+        Reorder_Level = CASE WHEN pReorderLevel IS NOT NULL THEN pReorderLevel ELSE Reorder_Level END
     WHERE ProductID = pProductID;
 
     -- Check if any rows were affected by the update
@@ -73,5 +65,30 @@ END; //
 CREATE VIEW ShowProducts AS
 SELECT ProductID, Name, Category, Cost, Selling_Price, Stock, Supplier_Info, Expiry_Date, Reorder_Level, Sales_Data
 FROM Products;
+
+DELIMITER ;
+
+
+
+DELIMITER //
+
+CREATE PROCEDURE RestockProduct(
+    IN p_ProductID INT,
+    IN p_StockQuantity INT,
+    IN p_ExpiryDate DATE
+)
+BEGIN
+    -- Check if the product exists and has stock = 0
+    IF EXISTS (SELECT * FROM Products WHERE ProductID = p_ProductID AND Stock <= Reorder_Level) THEN
+        -- Update the stock and expiry date
+        UPDATE Products
+        SET Stock = Stock + p_StockQuantity,
+            Expiry_Date = p_ExpiryDate
+        WHERE ProductID = p_ProductID;
+
+        SELECT CONCAT('Product ID ', p_ProductID, ' has been restocked with ', p_StockQuantity, ' units and expiry date updated to ', p_ExpiryDate) AS Status;
+   
+    END IF;
+END; //
 
 DELIMITER ;
