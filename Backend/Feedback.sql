@@ -54,24 +54,97 @@ BEGIN
         SELECT 'Error: No feedback found with the given ID!' AS Message;
     END IF;
 END; //
-
+DELIMITER //
 -- Respond to Feedback Procedure
 CREATE PROCEDURE RespondToFeedback(
-    IN pFeedbackID INT,
-    IN pResponse TEXT
+    IN pFeedbackID INT
 )
 BEGIN
-    -- Update the response for the feedback record
-    UPDATE Feedback
-    SET Response = pResponse
+    DECLARE pFeedbackText TEXT;
+    DECLARE sentimentTone VARCHAR(50);
+    DECLARE positiveKeywords TEXT DEFAULT 'good,excellent,amazing,awesome,positive,happy,satisfied';
+    DECLARE negativeKeywords TEXT DEFAULT 'bad,poor,terrible,horrible,negative,angry,unsatisfied';
+    DECLARE positiveCount INT DEFAULT 0;
+    DECLARE negativeCount INT DEFAULT 0;
+    DECLARE autoResponse TEXT;
+    DECLARE keyword TEXT;
+    DECLARE keywordList TEXT;
+
+    -- Fetch the feedback text for the given FeedbackID
+    SELECT Comments INTO pFeedbackText
+    FROM Feedback
     WHERE FeedbackID = pFeedbackID;
 
-    IF ROW_COUNT() > 0 THEN
-        SELECT 'Response added successfully!' AS Message;
+    -- Check if feedback text was found
+    IF pFeedbackText IS NOT NULL THEN
+
+        -- Count Positive Keywords
+        SET keywordList = positiveKeywords;
+        WHILE LOCATE(',', keywordList) > 0 DO
+            SET keyword = TRIM(SUBSTRING_INDEX(keywordList, ',', 1));
+            SET positiveCount = positiveCount + 
+                (LENGTH(LOWER(pFeedbackText)) - LENGTH(REPLACE(LOWER(pFeedbackText), LOWER(keyword), ''))) / LENGTH(keyword);
+            SET keywordList = SUBSTRING(keywordList FROM LOCATE(',', keywordList) + 1);
+        END WHILE;
+
+        -- Last positive keyword
+        SET keyword = TRIM(keywordList);
+        IF keyword IS NOT NULL AND keyword != '' THEN
+            SET positiveCount = positiveCount + 
+                (LENGTH(LOWER(pFeedbackText)) - LENGTH(REPLACE(LOWER(pFeedbackText), LOWER(keyword), ''))) / LENGTH(keyword);
+        END IF;
+
+        -- Count Negative Keywords
+        SET keywordList = negativeKeywords;
+        WHILE LOCATE(',', keywordList) > 0 DO
+            SET keyword = TRIM(SUBSTRING_INDEX(keywordList, ',', 1));
+            SET negativeCount = negativeCount + 
+                (LENGTH(LOWER(pFeedbackText)) - LENGTH(REPLACE(LOWER(pFeedbackText), LOWER(keyword), ''))) / LENGTH(keyword);
+            SET keywordList = SUBSTRING(keywordList FROM LOCATE(',', keywordList) + 1);
+        END WHILE;
+
+        -- Last negative keyword
+        SET keyword = TRIM(keywordList);
+        IF keyword IS NOT NULL AND keyword != '' THEN
+            SET negativeCount = negativeCount + 
+                (LENGTH(LOWER(pFeedbackText)) - LENGTH(REPLACE(LOWER(pFeedbackText), LOWER(keyword), ''))) / LENGTH(keyword);
+        END IF;
+
+        -- Determine Sentiment Tone
+        IF positiveCount > negativeCount THEN
+            SET sentimentTone = 'Positive';
+        ELSEIF negativeCount > positiveCount THEN
+            SET sentimentTone = 'Negative';
+        ELSE
+            SET sentimentTone = 'Neutral';
+        END IF;
+
+        -- Generate Auto-Response Based on Sentiment
+        IF sentimentTone = 'Positive' THEN
+            SET autoResponse = 'Thank you for your positive feedback! We are thrilled you had a great experience.';
+        ELSEIF sentimentTone = 'Negative' THEN
+            SET autoResponse = 'We are sorry to hear about your experience. Your feedback is important, and we will work to improve.';
+        ELSE
+            SET autoResponse = 'Thank you for your feedback! We appreciate your input.';
+        END IF;
+
+        -- Update the Response for the Feedback Record
+        UPDATE Feedback
+        SET Response = autoResponse
+        WHERE FeedbackID = pFeedbackID;
+
+        -- Provide Feedback on Success or Failure
+        IF ROW_COUNT() > 0 THEN
+            SELECT CONCAT('Response added successfully! Detected sentiment: ', sentimentTone) AS Message;
+        ELSE
+            SELECT 'Error: Could not update the response!' AS Message;
+        END IF;
+
     ELSE
+        -- Feedback not found message
         SELECT 'Error: No feedback found with the given ID!' AS Message;
     END IF;
-END;//
+END //
 
 CREATE PROCEDURE GenerateFeedbackInsights()
 BEGIN

@@ -40,58 +40,83 @@ BEGIN
     END IF;
 END //
 
--- CREATE PROCEDURE EditSale(
---     IN p_SaleID INT,
---     IN p_NewProductID INT,
---     IN p_NewCustomerID INT,
---     IN p_NewQuantity INT,
---     IN p_NewPaymentMethod ENUM('cash', 'card', 'online')
--- )
--- BEGIN
---     DECLARE v_OriginalProductID INT;
---     DECLARE v_OriginalQuantity INT;
+CREATE PROCEDURE EditSale(
+    IN p_SaleID INT,
+    IN p_NewProductID INT,
+    IN p_NewCustomerID INT,
+    IN p_NewQuantity INT,
+    IN p_NewPaymentMethod ENUM('cash', 'card', 'online')
+)
+BEGIN
+    DECLARE v_OriginalProductID INT;
+    DECLARE v_OriginalQuantity INT;
+    DECLARE v_OriginalTotalAmount DECIMAL(10, 2);
+    DECLARE v_SellingPrice DECIMAL(10, 2);
 
---     -- Get original product ID and quantity for the sale
---     SELECT ProductID, Quantity INTO v_OriginalProductID, v_OriginalQuantity
---     FROM Sales
---     WHERE SaleID = p_SaleID;
+    -- Get original product ID and quantity for the sale
+    SELECT ProductID, Quantity, Total_Amount INTO v_OriginalProductID, v_OriginalQuantity, v_OriginalTotalAmount
+    FROM Sales
+    WHERE SaleID = p_SaleID;
 
---     -- Restore stock for the original product
---     UPDATE Products
---     SET Stock = Stock + v_OriginalQuantity
---     WHERE ProductID = v_OriginalProductID;
+    -- Restore stock for the original product
+    IF v_OriginalProductID IS NOT NULL AND v_OriginalQuantity IS NOT NULL THEN
+        UPDATE Products
+        SET Stock = Stock + v_OriginalQuantity
+        WHERE ProductID = v_OriginalProductID;
+    END IF;
 
---     -- Check stock availability for the new product
---     IF EXISTS (
---         SELECT 1
---         FROM Products
---         WHERE ProductID = p_NewProductID AND Stock >= p_NewQuantity
---     ) THEN
---         -- Update the sale record
---         UPDATE Sales
---         SET ProductID = p_NewProductID,
---             CustomerID = p_NewCustomerID,
---             Quantity = p_NewQuantity,
---             Payment_Method = p_NewPaymentMethod,
---             Date = NOW(),
---             Total_Amount = p_NewQuantity * (SELECT Selling_Price FROM Products WHERE ProductID = p_NewProductID)
---         WHERE SaleID = p_SaleID;
+    -- Check stock availability for the new product if product ID and quantity are provided
+    IF p_NewProductID IS NOT NULL AND p_NewQuantity IS NOT NULL THEN
+        SELECT Selling_Price INTO v_SellingPrice
+        FROM Products
+        WHERE ProductID = p_NewProductID;
 
---         -- Deduct stock for the new product
---         UPDATE Products
---         SET Stock = Stock - p_NewQuantity
---         WHERE ProductID = p_NewProductID;
+        IF v_SellingPrice IS NULL THEN
+            SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Invalid Product ID provided.';
+        END IF;
 
---         SELECT 'Sale updated successfully' AS Message;
---     ELSE
---         -- Revert stock restoration if new product stock is insufficient
---         UPDATE Products
---         SET Stock = Stock - v_OriginalQuantity
---         WHERE ProductID = v_OriginalProductID;
+        IF (SELECT Stock FROM Products WHERE ProductID = p_NewProductID) < p_NewQuantity THEN
+            -- Revert stock restoration if new product stock is insufficient
+            SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Not enough stock for the new quantity.';
+        ELSE
+            -- Deduct stock for the new product
+            UPDATE Products
+            SET Stock = Stock - p_NewQuantity
+            WHERE ProductID = p_NewProductID;
+        END IF;
+    END IF;
 
---         SELECT 'Not enough stock for the new quantity' AS Message;
---     END IF;
--- END; //
+    -- Update the sale record with CASE statements
+    UPDATE Sales
+    SET 
+        ProductID = CASE 
+            WHEN p_NewProductID IS NOT NULL THEN p_NewProductID 
+            ELSE ProductID 
+        END,
+        CustomerID = CASE 
+            WHEN p_NewCustomerID IS NOT NULL THEN p_NewCustomerID 
+            ELSE CustomerID 
+        END,
+        Quantity = CASE 
+            WHEN p_NewQuantity IS NOT NULL THEN p_NewQuantity 
+            ELSE Quantity 
+        END,
+        Payment_Method = CASE 
+            WHEN p_NewPaymentMethod IS NOT NULL THEN p_NewPaymentMethod 
+            ELSE Payment_Method 
+        END,
+        Total_Amount = CASE
+            WHEN p_NewQuantity IS NOT NULL AND p_NewProductID IS NOT NULL THEN 
+                p_NewQuantity * v_SellingPrice
+            ELSE Total_Amount
+        END,
+        Date = NOW()
+    WHERE SaleID = p_SaleID;
+
+    SELECT 'Sale updated successfully' AS Message;
+END //
 
 CREATE PROCEDURE DeleteSale(IN p_SaleID INT)
 BEGIN

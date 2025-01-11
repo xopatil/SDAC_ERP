@@ -1,4 +1,3 @@
-
 DELIMITER //
 
 CREATE TRIGGER After_Sale_Insert
@@ -27,47 +26,31 @@ BEGIN
         -- Update Sales_Data in the Products table (store information about the sale)
         UPDATE Products
         SET Sales_Data = CONCAT_WS('\n', IFNULL(Sales_Data, ''),
-                                   CONCAT('Sale ID: ', NEW.SaleID, ', Quantity: ', NEW.Quantity, ', Date: ', NOW()))
+                                   CONCAT('Sale ID: ', NEW.SaleID, ', Quantity: ', NEW.Quantity, ', Date: ', NEW.Date))
         WHERE ProductID = NEW.ProductID;
 
         -- Update purchase_history and loyalty points in the Customers table
         UPDATE Customers
         SET Purchase_History = CONCAT_WS('\n', IFNULL(Purchase_History, ''),
-                                          CONCAT('Sale ID: ', NEW.SaleID, ', Quantity: ', NEW.Quantity, ', Date: ', NOW())),
+                                          CONCAT('Sale ID: ', NEW.SaleID, ', Quantity: ', NEW.Quantity, ', Date: ', NEW.Date)),
             Loyalty_Points = IFNULL(Loyalty_Points, 0) + 20
         WHERE CustomerID = NEW.CustomerID;
     END IF;
 END; //
 
--- CREATE TRIGGER After_Sale_Update
--- AFTER UPDATE ON Sales
--- FOR EACH ROW
--- BEGIN
---     -- Update Sales_Data in the Products table
---     UPDATE Products
---     SET Sales_Data = CONCAT_WS('\n', IFNULL(Sales_Data, ''), 
---                                CONCAT('ProductID: ', NEW.ProductID, ', New Quantity: ', NEW.Quantity, ', Date: ', NOW()))
---     WHERE ProductID = NEW.ProductID;
-
---     -- Update Purchase_History and increment Loyalty Points in the Customers table
---     UPDATE Customers
---     SET Purchase_History = CONCAT_WS('\n', IFNULL(Purchase_History, ''), 
---                                      CONCAT('ProductID: ', NEW.ProductID, ', New Quantity: ', NEW.Quantity, ', Date: ', NOW())),
---         Loyalty_Points = IFNULL(Loyalty_Points, 0) + 20
---     WHERE CustomerID = NEW.CustomerID;
--- END; //
-
+DELIMITER //
 CREATE TRIGGER After_User_Insert
 AFTER INSERT ON Users
 FOR EACH ROW
 BEGIN
     -- Insert into Customers table only if the Role is 'Regular'
     IF NEW.Role = 'Regular' THEN
-        INSERT INTO Customers (CustomerID, Email, Name, Loyalty_Points, Purchase_History)
-        VALUES (NEW.UserID, NEW.MailID, NEW.Name, 0, '');
+        INSERT INTO Customers (Email, Name, Loyalty_Points, Purchase_History)
+        VALUES (NEW.MailID, NEW.Name, 0, '');
     END IF;
 END; //
 
+DELIMITER //
 CREATE TRIGGER UpdateUserOnCustomerUpdate
 AFTER UPDATE ON Customers
 FOR EACH ROW

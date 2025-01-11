@@ -1,4 +1,5 @@
 DELIMITER //
+
 CREATE FUNCTION Product_Profitability() RETURNS JSON
 DETERMINISTIC
 BEGIN
@@ -26,31 +27,5 @@ BEGIN
 END;
 //
 DELIMITER ;
-
-CREATE VIEW HistoricalSellingPrices AS
-SELECT 
-    s.SaleID,
-    s.ProductID,
-    s.Quantity,
-    s.Date AS SaleDate,
-    s.Total_Amount / s.Quantity AS Selling_Price_At_Sale,
-    p.Cost
-FROM 
-    Sales s
-JOIN 
-    Products p ON s.ProductID = p.ProductID;
-
-
-CREATE VIEW ProductProfitabilityView AS
-SELECT 
-    h.ProductID,
-    SUM((h.Selling_Price_At_Sale - h.Cost) * h.Quantity) AS TotalProfit
-FROM 
-    HistoricalSellingPrices h
-GROUP BY 
-    h.ProductID;
-    
-    
-    
 
 

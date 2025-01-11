@@ -20,10 +20,10 @@ INSERT INTO Customers (Name, Email, Phone, Address, Loyalty_Points) VALUES
 ('Customer Five', 'customer5@example.com', '6789012345', 'Address 5', 250);
 
 INSERT INTO Sales (ProductID, CustomerID, Date, Quantity, Total_Amount, Payment_Method) VALUES
-(7, 1, '2024-1-25 17:09:12', 10, 120.00, 'Card'),
-(2, 3, '2024-2-26', 5, 105.00, 'Online'),
-(3, 10, '2024-3-27', 15, 300.00, 'Cash'),
-(3, 3, '2024-4-27', 15, 800.00, 'Cash'),
+(20, 20, '2025-5-25 17:09:12', 10, 120.00, 'Card'),
+(16, 21, '2025-2-26 18:07:12', 5, 105.00, 'Online'),
+(17, 18, '2025-3-27 19:08:11', 15, 300.00, 'Cash'),
+(19, 16, '2025-4-27 20:09:00', 15, 800.00, 'Cash'),
 (4, 1, '2024-5-28', 20, 180.00, 'Card'),
 (4, 10, '2024-6-28', 20, 200.00, 'Card'),
 (6, 3, '2024-7-29', 12, 206.00, 'Online'),

@@ -30,6 +30,7 @@ BEGIN
     END IF;
 END; //
 
+DELIMITER //
 CREATE PROCEDURE DeactivateInactiveCustomers()
 BEGIN
     -- Declare variables
@@ -39,7 +40,6 @@ BEGIN
     DECLARE v_id INT;
     DECLARE v_user_mail VARCHAR(255);
     DECLARE v_history TEXT;
-    DECLARE deactivatedCount INT DEFAULT 0;
 
     -- Cursor declaration 
     DECLARE curs CURSOR FOR 
@@ -67,7 +67,7 @@ BEGIN
 		
         -- Extract the latest purchase date
         SET lastPurchaseDate = (
-            SELECT MAX(
+            SELECT
                 STR_TO_DATE(
                     TRIM(
                         SUBSTRING_INDEX(
@@ -77,25 +77,12 @@ BEGIN
                     ),
                     '%Y-%m-%d %H:%i:%s'
                 )
-            )
-            FROM (
-                SELECT 1 AS seq UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 
-                UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8
-            ) AS seq
-            WHERE INSTR(v_history, 'Date:') > 0
         );
-
---         SELECT 
---             v_id AS ProcessingCustomerID,
---             lastPurchaseDate AS ExtractedDate,
---             DATEDIFF(currentDate, lastPurchaseDate) AS DaysDifference;
 
         -- Check if the last purchase date is more than 1 day ago
         IF lastPurchaseDate IS NOT NULL AND DATEDIFF(currentDate, lastPurchaseDate) > 1 THEN
             -- Deactivate the customer (delete)
             CALL DeleteUserAndCustomer(v_user_mail);
-            
-            SET deactivatedCount = deactivatedCount + 1;
         END IF;
 
     END LOOP;
@@ -104,7 +91,7 @@ BEGIN
     CLOSE curs;
 
     -- Return the number of deactivated customers
-    SELECT deactivatedCount AS 'Number of customers deactivated';
+    SELECT 'Customers deactivated' AS Message;
 END //
 
 CREATE VIEW ShowCustomers AS
